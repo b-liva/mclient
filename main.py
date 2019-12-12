@@ -2,6 +2,7 @@ import random
 from os import system
 import concurrent.futures
 import config
+import functools
 import time
 
 
@@ -46,26 +47,21 @@ class IpHandler:
         """make threads for each of ips"""
         print('making %s threads' % len(self.ips))
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            results = executor.map(self.check_ip, self.ips)
-            print('results: *************************************************', results)
-
-            for f in concurrent.futures.as_completed(results):
-                res = f.result()
-                print('++++++++++++++ ', res)
+            for ip in self.ips:
+                fu = executor.submit(self.check_ip, ip)
+                fu.add_done_callback(functools.partial(self._future_completed, index=self.ips.index(ip)))
 
     def make_one_thread(self):
-        import functools
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            index = 2
-            t0 = executor.submit(self.check_ip, self.ips[index])
-            t0.add_done_callback(functools.partial(self._future_completed, index=index))
+            index = 0
+            t1 = executor.submit(self.check_ip, self.ips[index])
+            t1.add_done_callback(functools.partial(self._future_completed, index=index))
 
             index = 1
             t1 = executor.submit(self.check_ip, self.ips[index])
             t1.add_done_callback(functools.partial(self._future_completed, index=index))
 
     def _future_completed(self, future, **kwargs):
-        import functools
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             index = 'no index'
             if 'index' in kwargs:
@@ -117,7 +113,6 @@ def main():
     ip_handler = IpHandler()
     ip_handler.get_ips()
     ip_handler.make_threads()
-    ip_handler.make_one_thread()
 
 
 if __name__ == '__main__':
