@@ -1,19 +1,45 @@
 import random
+import json
 from os import system
+import requests
 import concurrent.futures
 import config
 import functools
 import time
+from ip2geotools.databases.noncommercial import DbIpCity
+from do_handler import DoHandler
 
 
 class IpHandler:
     ips = []
+    my_ip = ''
+
+    # def __init__(self):
+    #     do_handler = DoHandler()
+    #     self.my_ip = do_handler.my_ip
+    #     print('my ip: ', self.my_ip)
+    #     response = DbIpCity.get(self.my_ip, api_key='free')
+    #     if response.country == 'IR':
+    #         print('country: ', response.country)
+    #         exit()
+    def get_fake_ips(self):
+        print('get the list of ips from each service(Amazon, Digital ocean, ...)')
+        self.ips = [item['ip'] for item in config.ipds]
+        print(self.ips)
 
     def get_ips(self):
         """gets a list of ips related to the servers"""
-        print('get the list of ips from each service(Amazon, Digital ocean, ...)')
-        self.ips = config.ips
+        url = "http://localhost:8002/mtph/get-all-servers"
+        response = requests.get(url)
+        print(response.json())
+        self.ips = [item['ip'] for item in response.json()]
         print(self.ips)
+
+    def get_id_by_ip(self, ip):
+        for item in config.ipds:
+            if item['ip'] == '200.132.169.8':
+                id = item['id']
+                return id
 
     def check_ip(self, ip):
         """
@@ -107,13 +133,37 @@ class IpHandler:
                  + '.' + str(int(1000 * random.random()))
         return new_ip
 
+    def change_server_by_id(self, id):
+        url = 'http://localhost:8002/mtph/change-server'
+        _data = {
+            'id': id,
+        }
+        data = json.dumps(_data)
+        response = requests.post(url, data)
+        print(response)
+
+    def api_request(self, url):
+        response = requests.get(url)
+        return response
+
 
 def main():
     """running part of the script"""
     ip_handler = IpHandler()
     ip_handler.get_ips()
-    ip_handler.make_threads()
+    # ip_handler.make_threads()
+    # url = 'http://localhost:8002/mtph/test-json'
+    # print(ip_handler.api_request(url).json())
 
+
+    # url = 'http://localhost:8002/mtph/get-droplets'
+    # drops = ip_handler.api_request(url).json()
+    # drop = drops['droplets'][0]
+    # print(drop)
+
+    # id = ip_handler.get_id_by_ip('200.132.169.8')
+    # print(id)
+    # ip_handler.change_server_by_id(id)
 
 if __name__ == '__main__':
     main()
