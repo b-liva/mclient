@@ -12,6 +12,7 @@ from do_handler import DoHandler
 
 class IpHandler:
     ips = []
+    conf_id = []
     my_ip = ''
 
     # def __init__(self):
@@ -31,13 +32,15 @@ class IpHandler:
         """gets a list of ips related to the servers"""
         url = "http://localhost:8002/mtph/get-all-servers"
         response = requests.get(url)
-        print(response.json())
-        self.ips = [item['ip'] for item in response.json()]
+        self.conf_id = response.json()
+        print(self.conf_id)
+
+        self.ips = [item['ip'] for item in self.conf_id]
         print(self.ips)
 
     def get_id_by_ip(self, ip):
-        for item in config.ipds:
-            if item['ip'] == '200.132.169.8':
+        for item in self.conf_id:
+            if item['ip'] == ip:
                 id = item['id']
                 return id
 
@@ -94,6 +97,7 @@ class IpHandler:
                 index = kwargs['index']
             result = future.result()
             if len(result) == 2:
+                # server failed and a new one is created.
                 print('call back finished ==> ', result, ' with index: ', index)
                 print(result)
                 old_ip = result[0]
@@ -105,6 +109,7 @@ class IpHandler:
                 fu.add_done_callback(functools.partial(self._future_completed, index=index))
                 return fu
             else:
+                # server is up
                 ip = result
 
                 # Test for failure
