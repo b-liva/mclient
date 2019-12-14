@@ -32,11 +32,8 @@ class IpHandler:
         """gets a list of ips related to the servers"""
         url = "http://localhost:8002/mtph/get-all-servers"
         response = requests.get(url)
-        self.conf_id = response.json()
-        print(self.conf_id)
-
+        self.conf_id = response.json()      
         self.ips = [item['ip'] for item in self.conf_id]
-        print(self.ips)
 
     def get_id_by_ip(self, ip):
         for item in self.conf_id:
@@ -44,12 +41,13 @@ class IpHandler:
                 id = item['id']
                 return id
 
-    def check_ip(self, ip):
+    def check_ip(self, server):
         """
         pings each ip and return a boolean
         :return: Boolean
         """
         # for i in range(6):
+        ip = server['ip']
         i = 0
         print('now pinging: %s' % ip)
         status = self.ping(ip)
@@ -59,35 +57,35 @@ class IpHandler:
             i += 1
             print('#: ', i)
             time.sleep(60)
-            return ip
+            return server
         else:
             print('********************************** ', ip, ' is down **********************************')
             i += 1
             print('#: ', i)
-            old_ip = ip
-            new_ip = self.change_server_with_ip(old_ip)
-            print('new ip: ', new_ip)
+            old_server = server
+            new_server = self.change_server_with_ip(old_server)
+            print('new ip: ', new_server)
 
             print('ip counts: ', len(self.ips), self.ips)
 
-            return [old_ip, new_ip]
+            return [old_server, new_server]
 
     def make_threads(self):
         """make threads for each of ips"""
         print('making %s threads' % len(self.ips))
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            for ip in self.ips:
-                fu = executor.submit(self.check_ip, ip)
-                fu.add_done_callback(functools.partial(self._future_completed, index=self.ips.index(ip)))
+            for server in self.conf_id:
+                fu = executor.submit(self.check_ip, server)
+                fu.add_done_callback(functools.partial(self._future_completed, index=self.conf_id.index(server)))
 
     def make_one_thread(self):
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             index = 0
-            t1 = executor.submit(self.check_ip, self.ips[index])
+            t1 = executor.submit(self.check_ip, self.conf_id[index])
             t1.add_done_callback(functools.partial(self._future_completed, index=index))
 
             index = 1
-            t1 = executor.submit(self.check_ip, self.ips[index])
+            t1 = executor.submit(self.check_ip, self.conf_id[index])
             t1.add_done_callback(functools.partial(self._future_completed, index=index))
 
     def _future_completed(self, future, **kwargs):
@@ -96,29 +94,30 @@ class IpHandler:
             if 'index' in kwargs:
                 index = kwargs['index']
             result = future.result()
-            if len(result) == 2:
+            print('***********result:', result)
+            if result.__class__.__name__ == 'list':
                 # server failed and a new one is created.
                 print('call back finished ==> ', result, ' with index: ', index)
                 print(result)
-                old_ip = result[0]
-                new_ip = result[1]
-                index = self.ips.index(old_ip)
-                self.ips[index] = new_ip
-                print(self.ips)
-                fu = executor.submit(self.check_ip, self.ips[index])
+                old_server = result[0]
+                new_server = result[1]
+                index = self.conf_id.index(old_server)
+                self.conf_id[index] = new_server
+                print(self.conf_id)
+                fu = executor.submit(self.check_ip, self.conf_id[index])
                 fu.add_done_callback(functools.partial(self._future_completed, index=index))
                 return fu
             else:
                 # server is up
-                ip = result
+                server = result
 
                 # Test for failure
                 # if ip == '5.144.130.116':
                 #     self.ips[self.ips.index(ip)] = '34.5.4.6'
                 #     ip = '34.5.4.6'
 
-                index = self.ips.index(ip)
-                fu = executor.submit(self.check_ip, self.ips[index])
+                index = self.conf_id.index(server)
+                fu = executor.submit(self.check_ip, self.conf_id[index])
                 fu.add_done_callback(functools.partial(self._future_completed, index=index))
                 return fu
 
@@ -129,14 +128,20 @@ class IpHandler:
         elif response == 1:
             return False
 
-    def change_server_with_ip(self, ip):
+    def change_server_with_ip(self, server):
         """if an ip ping shows a failure then a request will be sent to the webapp to change the corresponting server"""
+        ip = server['ip']        
+        id = server['id']
         print('Make a request to change the server with ip: ', ip)
+        new_id = str(int(10000000 * random.random()))
         new_ip = str(int(200 * random.random())) \
                  + '.' + str(int(1000 * random.random())) \
                  + '.' + str(int(1000 * random.random())) \
                  + '.' + str(int(1000 * random.random()))
-        return new_ip
+        return {
+        'id': new_id,
+        'ip': new_ip,
+        }
 
     def change_server_by_id(self, id):
         url = 'http://localhost:8002/mtph/change-server'
@@ -156,7 +161,9 @@ def main():
     """running part of the script"""
     ip_handler = IpHandler()
     ip_handler.get_ips()
-    # ip_handler.make_threads()
+    # id = ip_handler.get_id_by_ip('167.172.16.29')
+    # print('id: ', id)
+    ip_handler.make_threads()
     # url = 'http://localhost:8002/mtph/test-json'
     # print(ip_handler.api_request(url).json())
 
