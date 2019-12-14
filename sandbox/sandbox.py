@@ -1,3 +1,6 @@
+# mike11860@gmail.com:audrey12ben => nordvpnpass
+
+# digital ocean token: 30481e4713012f917ea4f36b95a5528da83493b396e44142336d992aa6e5bc8a
 import logging
 import threading
 import time
@@ -28,3 +31,27 @@ if __name__ == "__main__":
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
         executor.map(thread_function, range(3))
+
+
+#  find ip and location
+
+import geoip # pip install python-geoip
+import pygeoip # pip install 
+from geoip import geolite2
+import urllib.request
+from requests import get
+
+external_ip = urllib.request.urlopen('https://ident.me').read().decode('utf8')
+print(external_ip)
+
+ip = get('https://api.ipify.org').text
+
+match = geolite2.lookup(ip)
+print('Country: '+ match.country)
+print('timezone: '+ match.timezone)
+
+
+from ip2geotools.databases.noncommercial import DbIpCity
+response = DbIpCity.get('147.229.2.90', api_key='free')
+response.ip_address
+response.country
