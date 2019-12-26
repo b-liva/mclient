@@ -5,8 +5,7 @@ import requests
 import concurrent.futures
 import functools
 import time
-from ip2geotools.databases.noncommercial import DbIpCity
-from do_handler import DoHandler
+
 from .config import config, fake_ips
 
 
@@ -15,14 +14,6 @@ class IpHandler:
     conf_id = []
     my_ip = ''
 
-    # def __init__(self):
-    #     do_handler = DoHandler()
-    #     self.my_ip = do_handler.my_ip
-    #     print('my ip: ', self.my_ip)
-    #     response = DbIpCity.get(self.my_ip, api_key='free')
-    #     if response.country == 'IR':
-    #         print('country: ', response.country)
-    #         exit()
     def get_fake_ips(self):
         print('get the list of ips from each service(Amazon, Digital ocean, ...)')
         self.ips = [item['ip'] for item in fake_ips.ipds]
@@ -116,10 +107,6 @@ class IpHandler:
                 # server is up
                 server = result
                 print('upserver: ', server)
-                # Test for failure
-                # if ip == '5.144.130.116':
-                #     self.ips[self.ips.index(ip)] = '34.5.4.6'
-                #     ip = '34.5.4.6'
 
                 index = self.conf_id.index(server)
                 fu = executor.submit(self.check_ip, self.conf_id[index])
@@ -169,22 +156,9 @@ def main():
     """running part of the script"""
     ip_handler = IpHandler()
     ip_handler.get_ips()
-    # id = ip_handler.get_id_by_ip('167.172.16.29')
-    # print('id: ', id)
 
     ip_handler.make_threads()
 
-    # url = 'http://localhost:8002/mtph/test-json'
-    # print(ip_handler.api_request(url).json())
-
-    # url = 'http://localhost:8002/mtph/get-droplets'
-    # drops = ip_handler.api_request(url).json()
-    # drop = drops['droplets'][0]
-    # print(drop)
-
-    # id = ip_handler.get_id_by_ip('200.132.169.8')
-    # print(id)
-    # ip_handler.change_server_by_id(id)
 
 if __name__ == '__main__':
     main()
