@@ -52,7 +52,7 @@ class IpHandler:
             # print(status)
             i += 1
             print('#: ', i)
-            time.sleep(120)
+            time.sleep(60)
             return server
         else:
             print('********************************** ', ip, ' is down **********************************')
