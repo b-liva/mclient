@@ -115,8 +115,9 @@ class IpHandler:
 
     def ping(self, ip):
 
-        response = system('ping ' + ip)
-        if platform.system() == 'Linux':
+        if platform.system() == 'Windows':
+            response = system('ping ' + ip)
+        else:
             response = system('ping -c 4 ' + ip)
 
         if response == 0:
