@@ -1,6 +1,6 @@
 import os
 
-PRODUCTION = os.environ['PRODUCTION']
+PRODUCTION = os.environ['ENVIRONMENT']
 if PRODUCTION == 'production':
     base_url = '165.227.65.164:8001/'
 else:
