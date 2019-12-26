@@ -3,11 +3,11 @@ import json
 from os import system
 import requests
 import concurrent.futures
-import config
 import functools
 import time
 from ip2geotools.databases.noncommercial import DbIpCity
 from do_handler import DoHandler
+from .config import config, fake_ips
 
 
 class IpHandler:
@@ -25,15 +25,19 @@ class IpHandler:
     #         exit()
     def get_fake_ips(self):
         print('get the list of ips from each service(Amazon, Digital ocean, ...)')
-        self.ips = [item['ip'] for item in config.ipds]
+        self.ips = [item['ip'] for item in fake_ips.ipds]
         print(self.ips)
 
     def get_ips(self):
         """gets a list of ips related to the servers"""
-        url = "http://localhost:8002/mtph/get-all-servers"
+        url = config.urls['get-all-servers']
+        # url = "http://ff18da60.ngrok.io/mtph/get-all-servers"
         response = requests.get(url)
-        self.conf_id = response.json()      
+        print(response)
+        self.conf_id = response.json()
         self.ips = [item['ip'] for item in self.conf_id]
+        print(self.conf_id)
+        print(self.ips)
 
     def get_id_by_ip(self, ip):
         for item in self.conf_id:
@@ -42,6 +46,7 @@ class IpHandler:
                 return id
 
     def check_ip(self, server):
+        print('server: ', server)
         """
         pings each ip and return a boolean
         :return: Boolean
@@ -56,14 +61,15 @@ class IpHandler:
             # print(status)
             i += 1
             print('#: ', i)
-            time.sleep(60)
+            time.sleep(120)
             return server
         else:
             print('********************************** ', ip, ' is down **********************************')
             i += 1
             print('#: ', i)
             old_server = server
-            new_server = self.change_server_with_ip(old_server)
+            # new_server = self.change_server_with_ip(old_server)
+            new_server = self.change_server_by_id(old_server['id'])
             print('new ip: ', new_server)
 
             print('ip counts: ', len(self.ips), self.ips)
@@ -97,8 +103,7 @@ class IpHandler:
             print('***********result:', result)
             if result.__class__.__name__ == 'list':
                 # server failed and a new one is created.
-                print('call back finished ==> ', result, ' with index: ', index)
-                print(result)
+                print('call back finished ==> ', result[0], ' with index: ', index)
                 old_server = result[0]
                 new_server = result[1]
                 index = self.conf_id.index(old_server)
@@ -110,7 +115,7 @@ class IpHandler:
             else:
                 # server is up
                 server = result
-
+                print('upserver: ', server)
                 # Test for failure
                 # if ip == '5.144.130.116':
                 #     self.ips[self.ips.index(ip)] = '34.5.4.6'
@@ -144,13 +149,16 @@ class IpHandler:
         }
 
     def change_server_by_id(self, id):
-        url = 'http://localhost:8002/mtph/change-server'
+        url = config.urls['change-server']
         _data = {
             'id': id,
         }
         data = json.dumps(_data)
         response = requests.post(url, data)
-        print(response)
+        new_serve = response.json()
+        print('this is response with status: ', response)
+        print('this is response only: ', new_serve)
+        return new_serve
 
     def api_request(self, url):
         response = requests.get(url)
@@ -163,10 +171,11 @@ def main():
     ip_handler.get_ips()
     # id = ip_handler.get_id_by_ip('167.172.16.29')
     # print('id: ', id)
+
     ip_handler.make_threads()
+
     # url = 'http://localhost:8002/mtph/test-json'
     # print(ip_handler.api_request(url).json())
-
 
     # url = 'http://localhost:8002/mtph/get-droplets'
     # drops = ip_handler.api_request(url).json()
