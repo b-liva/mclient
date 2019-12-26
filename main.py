@@ -5,8 +5,8 @@ import requests
 import concurrent.futures
 import functools
 import time
-
-from .config import config, fake_ips
+import platform
+from config import config, fake_ips
 
 
 class IpHandler:
@@ -114,10 +114,14 @@ class IpHandler:
                 return fu
 
     def ping(self, ip):
+
         response = system('ping ' + ip)
+        if platform.system() == 'Linux':
+            response = system('ping -c 4 ' + ip)
+
         if response == 0:
             return True
-        elif response == 1:
+        else:
             return False
 
     def change_server_with_ip(self, server):
