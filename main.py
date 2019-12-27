@@ -46,6 +46,11 @@ class IpHandler:
         ip = server['ip']
         i = 0
         print('now pinging: %s' % ip)
+        net_status = self.ping('www.google.com')
+        while not net_status:
+            print('internet connection problem')
+            net_status = self.ping('www.google.com')
+            time.sleep(15)
         status = self.ping(ip)
         if status:
             print('********************************** ', ip, ' is up ************************************')
@@ -55,12 +60,24 @@ class IpHandler:
             time.sleep(60)
             return server
         else:
+            additional_check = False
+            count = 3
+            while count > 0:
+                print('checking for again for certainty: ', count, ' remaining for ip: ', ip)
+                additional_check = self.ping(ip)
+                count -= 1
+                time.sleep(5)
+            if additional_check:
+                return server
             print('********************************** ', ip, ' is down **********************************')
             i += 1
             print('#: ', i)
             old_server = server
             # new_server = self.change_server_with_ip(old_server)
-            new_server = self.change_server_by_id(old_server['id'])
+            try:
+                new_server = self.change_server_by_id(old_server['id'])
+            except:
+                return server
             print('new ip: ', new_server)
 
             print('ip counts: ', len(self.ips), self.ips)
@@ -161,6 +178,9 @@ def main():
     """running part of the script"""
     ip_handler = IpHandler()
     ip_handler.get_ips()
+    # ip_handler.ips = [item['ip'] for item in fake_ips.ipds]
+    # ip_handler.conf_id = fake_ips.ipds
+    # print(ip_handler.ips)
 
     ip_handler.make_threads()
 

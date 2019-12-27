@@ -6,6 +6,8 @@ if PRODUCTION == 'production':
 else:
     base_url = 'http://localhost:8002/'
 urls = {
+    # 'get-all-servers': base_url + "cloud/get-all-servers",
+    # 'change-server': base_url + 'cloud/change-server',
     'get-all-servers': base_url + "mtph/get-all-servers",
     'change-server': base_url + 'mtph/change-server',
 }
