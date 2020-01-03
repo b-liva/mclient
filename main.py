@@ -1,3 +1,4 @@
+import subprocess
 import random
 import json
 from os import system
@@ -7,6 +8,17 @@ import functools
 import time
 import platform
 from config import config, fake_ips
+
+
+class Colors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 
 class IpHandler:
@@ -53,7 +65,7 @@ class IpHandler:
             time.sleep(15)
         status = self.ping(ip)
         if status:
-            print('********************************** ', ip, ' is up ************************************')
+            print(f'{Colors.OKGREEN}**********************************{ip} is up ************************************{Colors.ENDC} ')
             # print(status)
             i += 1
             print('#: ', i)
@@ -61,15 +73,15 @@ class IpHandler:
             return server
         else:
             additional_check = False
-            count = 3
+            count = 5
             while count > 0:
-                print('checking for again for certainty: ', count, ' remaining for ip: ', ip)
+                print(f'{Colors.WARNING}checking for again for certainty: {count} remaining for ip: {ip}{Colors.ENDC}')
                 additional_check = self.ping(ip)
                 count -= 1
                 time.sleep(5)
             if additional_check:
                 return server
-            print('********************************** ', ip, ' is down **********************************')
+            print(f'{Colors.FAIL}********************************** {ip} is down **********************************{Colors.ENDC}')
             i += 1
             print('#: ', i)
             old_server = server
@@ -131,6 +143,12 @@ class IpHandler:
                 return fu
 
     def ping(self, ip):
+        output = subprocess.Popen(["ping.exe", ip], stdout=subprocess.PIPE).communicate()[0]
+        if str(output).count('Request timed out') > 1:
+            return False
+        return True
+
+    def ping2(self, ip):
 
         if platform.system() == 'Windows':
             response = system('ping ' + ip)
