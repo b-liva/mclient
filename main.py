@@ -36,7 +36,7 @@ class IpHandler:
                 id = item['id']
                 return id
 
-    def check_ip(self, server):
+    def check_ip(self, server, lock):
         print('server: ', server)
         """
         pings each ip and return a boolean
@@ -63,7 +63,7 @@ class IpHandler:
             additional_check = False
             count = 3
             while count > 0:
-                print('checking for again for certainty: ', count, ' remaining for ip: ', ip)
+                print('check again for certainty: ', count, ' remaining for ip: ', ip)
                 additional_check = self.ping(ip)
                 count -= 1
                 time.sleep(5)
@@ -77,20 +77,32 @@ class IpHandler:
             try:
                 new_server = self.change_server_by_id(old_server['id'])
             except:
-                return server
-            print('new ip: ', new_server)
+                print('something is wrong, finding newly created server')
+                new_server = self.find_new_drop_by_ip(ip)
+                if not new_server:
+                    print('no server created before.')
+                    return server
 
+            lock.acquire()
+            res = self.change_dns(old_server['ip'], new_server['ip'])
+            lock.release()
+            print('new ip: ', new_server)
+            print('waiting to change dns...')
+            time.sleep(90)
             print('ip counts: ', len(self.ips), self.ips)
 
             return [old_server, new_server]
 
     def make_threads(self):
         """make threads for each of ips"""
+        import threading
         print('making %s threads' % len(self.ips))
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        lock = threading.Lock()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+
             for server in self.conf_id:
-                fu = executor.submit(self.check_ip, server)
-                fu.add_done_callback(functools.partial(self._future_completed, index=self.conf_id.index(server)))
+                fu = executor.submit(self.check_ip, server, lock)
+                fu.add_done_callback(functools.partial(self._future_completed, index=self.conf_id.index(server), lock=lock))
 
     def make_one_thread(self):
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
@@ -103,10 +115,12 @@ class IpHandler:
             t1.add_done_callback(functools.partial(self._future_completed, index=index))
 
     def _future_completed(self, future, **kwargs):
+        print('kwargs: ', kwargs)
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             index = 'no index'
             if 'index' in kwargs:
                 index = kwargs['index']
+            lock = kwargs['lock']
             result = future.result()
             print('***********result:', result)
             if result.__class__.__name__ == 'list':
@@ -117,8 +131,8 @@ class IpHandler:
                 index = self.conf_id.index(old_server)
                 self.conf_id[index] = new_server
                 print(self.conf_id)
-                fu = executor.submit(self.check_ip, self.conf_id[index])
-                fu.add_done_callback(functools.partial(self._future_completed, index=index))
+                fu = executor.submit(self.check_ip, self.conf_id[index], lock)
+                fu.add_done_callback(functools.partial(self._future_completed, index=index, lock=lock))
                 return fu
             else:
                 # server is up
@@ -126,8 +140,8 @@ class IpHandler:
                 print('upserver: ', server)
 
                 index = self.conf_id.index(server)
-                fu = executor.submit(self.check_ip, self.conf_id[index])
-                fu.add_done_callback(functools.partial(self._future_completed, index=index))
+                fu = executor.submit(self.check_ip, self.conf_id[index], lock)
+                fu.add_done_callback(functools.partial(self._future_completed, index=index, lock=lock))
                 return fu
 
     def ping(self, ip):
@@ -168,6 +182,29 @@ class IpHandler:
         print('this is response with status: ', response)
         print('this is response only: ', new_serve)
         return new_serve
+
+    def change_dns(self, old_ip, new_ip):
+        url = config.urls['change-dns']
+        _data = {
+            'old_ip': old_ip,
+            'new_ip': new_ip,
+        }
+        data = json.dumps(_data)
+        response = requests.post(url, data)
+        print(f'changing dns status: {response}')
+        return response
+
+    def find_new_drop_by_ip(self, ip):
+        url = config.urls['find-new-drop']
+        print(url)
+        _data = {
+            'old_ip': ip
+        }
+        data = json.dumps(_data)
+        response = requests.post(url, data)
+        print(response)
+        new_server = response.json()
+        return new_server
 
     def api_request(self, url):
         response = requests.get(url)
