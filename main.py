@@ -79,8 +79,8 @@ class IpHandler:
                 additional_check = self.ping(ip)
                 count -= 1
                 time.sleep(5)
-            if additional_check:
-                return server
+                if additional_check:
+                    return server
             print(f'{Colors.FAIL}********************************** {ip} is down **********************************{Colors.ENDC}')
             i += 1
             print('#: ', i)
