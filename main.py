@@ -78,7 +78,8 @@ class IpHandler:
             # new_server = self.change_server_with_ip(old_server)
             try:
                 # todo: removing ip from dns and then trying to change it.
-                self.change_dns('remove', lock, old_ip=old_server['id'])
+                print(f"remoing {old_server['ip']} from dns")
+                self.change_dns('remove', lock, old_ip=old_server['ip'])
                 new_server = self.change_server_by_id(old_server['id'])
             except:
                 print('something is wrong, finding newly created server')
@@ -157,7 +158,7 @@ class IpHandler:
         while not net_status:
             print('internet connection problem')
             net_status = self.ping('www.google.com')
-            time.sleep(15)
+            time.sleep(5)
         return net_status
 
     def change_server_by_id(self, id):
