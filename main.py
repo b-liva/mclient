@@ -52,7 +52,6 @@ class IpHandler:
         ip = server['ip']
         i = 0
         print('now pinging: %s' % ip)
-        self.check_net_connectivity()
 
         status = self.ping(ip)
         if status:
@@ -78,6 +77,8 @@ class IpHandler:
             old_server = server
             # new_server = self.change_server_with_ip(old_server)
             try:
+                # todo: removing ip from dns and then trying to change it.
+                self.change_dns('remove', lock, old_ip=old_server['id'])
                 new_server = self.change_server_by_id(old_server['id'])
             except:
                 print('something is wrong, finding newly created server')
@@ -86,10 +87,16 @@ class IpHandler:
                     print('no server created before.')
                     return server
 
-                self.check_net_connectivity()
-                lock.acquire()
-                res = self.change_dns(action='add', new_ip=new_server['ip'])
-                lock.release()
+            # todo: check if this ip is clean change status to clean and change dns back to the ip,
+            self.ping(new_server['ip'])
+            time.sleep(5)
+            status = self.ping(new_server['ip'])
+            if status:
+                print('new server is checked and working. prepare to add to dnd')
+                # else only pass the ip to check and change without changing dns
+
+                res = self.change_dns(action='add', lock=lock, new_ip=new_server['ip'])
+
                 print('new ip: ', new_server)
                 print('waiting to change dns...')
                 time.sleep(45)
@@ -137,14 +144,16 @@ class IpHandler:
                 fu.add_done_callback(functools.partial(self._future_completed, index=index, lock=lock))
                 return fu
 
-    def ping(self, ip):
+    def ping(self, ip, check_net=True):
+        if check_net:
+            self.check_net_connectivity()
         output = subprocess.Popen(["ping.exe", ip], stdout=subprocess.PIPE).communicate()[0]
         if str(output).count('Request timed out') > 1:
             return False
         return True
 
     def check_net_connectivity(self):
-        net_status = self.ping('www.google.com')
+        net_status = self.ping('www.google.com', check_net=False)
         while not net_status:
             print('internet connection problem')
             net_status = self.ping('www.google.com')
@@ -163,7 +172,9 @@ class IpHandler:
         print('this is response only: ', new_serve)
         return new_serve
 
-    def change_dns(self, action, **kwargs):
+    def change_dns(self, action, lock, **kwargs):
+        self.check_net_connectivity()
+        lock.acquire()
         url = config.urls['change-dns']
         _data = dict()
         if 'old_ip' in kwargs:
@@ -174,9 +185,11 @@ class IpHandler:
         data = json.dumps(_data)
         response = requests.post(url, data)
         print(f'changing dns status: {response}')
+        lock.release()
         return response
 
     def find_new_drop_by_ip(self, ip):
+        self.check_net_connectivity()
         url = config.urls['find-new-drop']
         print(url)
         _data = {
