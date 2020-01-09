@@ -1,5 +1,4 @@
 import subprocess
-import random
 import json
 from os import system
 import requests
@@ -25,11 +24,6 @@ class IpHandler:
     ips = []
     conf_id = []
     my_ip = ''
-
-    def get_fake_ips(self):
-        print('get the list of ips from each service(Amazon, Digital ocean, ...)')
-        self.ips = [item['ip'] for item in fake_ips.ipds]
-        print(self.ips)
 
     def get_ips(self):
         """gets a list of ips related to the servers"""
@@ -58,11 +52,8 @@ class IpHandler:
         ip = server['ip']
         i = 0
         print('now pinging: %s' % ip)
-        net_status = self.ping('www.google.com')
-        while not net_status:
-            print('internet connection problem')
-            net_status = self.ping('www.google.com')
-            time.sleep(15)
+        self.check_net_connectivity()
+
         status = self.ping(ip)
         if status:
             print(f'{Colors.OKGREEN}**********************************{ip} is up ************************************{Colors.ENDC} ')
@@ -95,12 +86,13 @@ class IpHandler:
                     print('no server created before.')
                     return server
 
-            lock.acquire()
-            res = self.change_dns(old_server['ip'], new_server['ip'])
-            lock.release()
-            print('new ip: ', new_server)
-            print('waiting to change dns...')
-            time.sleep(90)
+                self.check_net_connectivity()
+                lock.acquire()
+                res = self.change_dns(action='add', new_ip=new_server['ip'])
+                lock.release()
+                print('new ip: ', new_server)
+                print('waiting to change dns...')
+                time.sleep(45)
             print('ip counts: ', len(self.ips), self.ips)
 
             return [old_server, new_server]
@@ -116,18 +108,7 @@ class IpHandler:
                 fu = executor.submit(self.check_ip, server, lock)
                 fu.add_done_callback(functools.partial(self._future_completed, index=self.conf_id.index(server), lock=lock))
 
-    def make_one_thread(self):
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            index = 0
-            t1 = executor.submit(self.check_ip, self.conf_id[index])
-            t1.add_done_callback(functools.partial(self._future_completed, index=index))
-
-            index = 1
-            t1 = executor.submit(self.check_ip, self.conf_id[index])
-            t1.add_done_callback(functools.partial(self._future_completed, index=index))
-
     def _future_completed(self, future, **kwargs):
-        print('kwargs: ', kwargs)
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             index = 'no index'
             if 'index' in kwargs:
@@ -162,32 +143,13 @@ class IpHandler:
             return False
         return True
 
-    def ping2(self, ip):
-
-        if platform.system() == 'Windows':
-            response = system('ping ' + ip)
-        else:
-            response = system('ping -c 4 ' + ip)
-
-        if response == 0:
-            return True
-        else:
-            return False
-
-    def change_server_with_ip(self, server):
-        """if an ip ping shows a failure then a request will be sent to the webapp to change the corresponting server"""
-        ip = server['ip']        
-        id = server['id']
-        print('Make a request to change the server with ip: ', ip)
-        new_id = str(int(10000000 * random.random()))
-        new_ip = str(int(200 * random.random())) \
-                 + '.' + str(int(1000 * random.random())) \
-                 + '.' + str(int(1000 * random.random())) \
-                 + '.' + str(int(1000 * random.random()))
-        return {
-        'id': new_id,
-        'ip': new_ip,
-        }
+    def check_net_connectivity(self):
+        net_status = self.ping('www.google.com')
+        while not net_status:
+            print('internet connection problem')
+            net_status = self.ping('www.google.com')
+            time.sleep(15)
+        return net_status
 
     def change_server_by_id(self, id):
         url = config.urls['change-server']
@@ -201,12 +163,14 @@ class IpHandler:
         print('this is response only: ', new_serve)
         return new_serve
 
-    def change_dns(self, old_ip, new_ip):
+    def change_dns(self, action, **kwargs):
         url = config.urls['change-dns']
-        _data = {
-            'old_ip': old_ip,
-            'new_ip': new_ip,
-        }
+        _data = dict()
+        if 'old_ip' in kwargs:
+            _data['old_ip'] = kwargs['old_ip']
+        if 'new_ip' in kwargs:
+            _data['new_ip'] = kwargs['new_ip']
+        _data['action'] = action
         data = json.dumps(_data)
         response = requests.post(url, data)
         print(f'changing dns status: {response}')
