@@ -3,3 +3,7 @@ __pycache__
 *.tlp
 
 sandbox/
+
+logs.txt
+
+logs.log

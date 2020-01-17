@@ -78,7 +78,7 @@ class IpHandler:
             # new_server = self.change_server_with_ip(old_server)
             try:
                 # todo: removing ip from dns and then trying to change it.
-                print(f"remoing {old_server['ip']} from dns")
+                print(f"removing {old_server['ip']} from dns")
                 self.change_dns('remove', lock, old_ip=old_server['ip'])
                 new_server = self.change_server_by_id(old_server['id'])
             except:
@@ -93,7 +93,7 @@ class IpHandler:
             time.sleep(5)
             status = self.ping(new_server['ip'])
             if status:
-                print('new server is checked and working. prepare to add to dnd')
+                print(f"{new_server['ip']} is checked and working. prepare to add to dns")
                 # else only pass the ip to check and change without changing dns
 
                 res = self.change_dns(action='add', lock=lock, new_ip=new_server['ip'])
@@ -169,7 +169,6 @@ class IpHandler:
         data = json.dumps(_data)
         response = requests.post(url, data)
         new_serve = response.json()
-        print('this is response with status: ', response)
         print('this is response only: ', new_serve)
         return new_serve
 
