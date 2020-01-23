@@ -30,11 +30,11 @@ class IpHandler:
         url = config.urls['get-all-servers']
         # url = "http://ff18da60.ngrok.io/mtph/get-all-servers"
         response = requests.get(url)
-        print(response)
+
         self.conf_id = response.json()
         self.ips = [item['ip'] for item in self.conf_id]
-        print(self.conf_id)
-        print(self.ips)
+
+        print('ips: ', self.ips)
 
     def get_id_by_ip(self, ip):
         for item in self.conf_id:
@@ -43,52 +43,53 @@ class IpHandler:
                 return id
 
     def check_ip(self, server, lock):
-        print('server: ', server)
         """
         pings each ip and return a boolean
         :return: Boolean
         """
-        # for i in range(6):
+
         ip = server['ip']
         i = 0
-        print('now pinging: %s' % ip)
+        print('Pinging: %s' % ip)
 
         status = self.ping(ip)
         if status:
-            print(f'{Colors.OKGREEN}**********************************{ip} is up ************************************{Colors.ENDC} ')
-            # print(status)
+            print(f'{Colors.OKGREEN}***************************{ip} is up *****************************{Colors.ENDC} ')
             i += 1
             print('#: ', i)
             time.sleep(60)
             return server
         else:
-            additional_check = False
-            count = 5
-            while count > 0:
-                print(f'{Colors.WARNING}checking for again for certainty: {count} remaining for ip: {ip}{Colors.ENDC}')
-                additional_check = self.ping(ip)
-                count -= 1
-                time.sleep(5)
-                if additional_check:
-                    return server
-            print(f'{Colors.FAIL}********************************** {ip} is down **********************************{Colors.ENDC}')
+            self.certainty_check(server, ip, count=3, delay=3)
+            # additional_check = False
+            # count = 3
+            # while count > 0:
+            #     print(f'{Colors.WARNING}checking again for certainty: {count} remaining for ip: {ip}{Colors.ENDC}')
+            #     additional_check = self.ping(ip)
+            #     count -= 1
+            #     time.sleep(3)
+            #     if additional_check:
+            #         return server
+            print(f'{Colors.FAIL}*************************** {ip} is down *****************************{Colors.ENDC}')
             i += 1
-            print('#: ', i)
             old_server = server
             # new_server = self.change_server_with_ip(old_server)
             try:
-                # todo: removing ip from dns and then trying to change it.
-                print(f"removing {old_server['ip']} from dns")
+                # todo (3): what if this is the only ip?
+                # todo: adding error log here.
+                print(f"Removing {old_server['ip']} from dns")
                 self.change_dns('remove', lock, old_ip=old_server['ip'])
+                # todo (5): Handling failure.
                 new_server = self.change_server_by_id(old_server['id'])
             except:
                 print('something is wrong, finding newly created server')
                 new_server = self.find_new_drop_by_ip(ip)
                 if not new_server:
                     print('no server created before.')
+                    # todo (8): Should we add dns again?
                     return server
 
-            # todo: check if this ip is clean change status to clean and change dns back to the ip,
+            # todo (6): what if first checks fails and other passes.
             self.ping(new_server['ip'])
             time.sleep(5)
             status = self.ping(new_server['ip'])
@@ -103,7 +104,15 @@ class IpHandler:
                 time.sleep(45)
             print('ip counts: ', len(self.ips), self.ips)
 
-            return [old_server, new_server]
+    def certainty_check(self, server, ip, count=3, delay=3):
+        additional_check = False
+        while count > 0:
+            print(f'{Colors.WARNING}checking again for certainty: {count} remaining for ip: {ip}{Colors.ENDC}')
+            additional_check = self.ping(ip)
+            count -= 1
+            time.sleep(delay)
+            if additional_check:
+                return server
 
     def make_threads(self):
         """make threads for each of ips"""
@@ -123,22 +132,20 @@ class IpHandler:
                 index = kwargs['index']
             lock = kwargs['lock']
             result = future.result()
-            print('***********result:', result)
             if result.__class__.__name__ == 'list':
                 # server failed and a new one is created.
-                print('call back finished ==> ', result[0], ' with index: ', index)
                 old_server = result[0]
                 new_server = result[1]
+                print(f'new server is created:{new_server}')
                 index = self.conf_id.index(old_server)
                 self.conf_id[index] = new_server
-                print(self.conf_id)
+
                 fu = executor.submit(self.check_ip, self.conf_id[index], lock)
                 fu.add_done_callback(functools.partial(self._future_completed, index=index, lock=lock))
                 return fu
             else:
                 # server is up
                 server = result
-                print('upserver: ', server)
 
                 index = self.conf_id.index(server)
                 fu = executor.submit(self.check_ip, self.conf_id[index], lock)
@@ -169,7 +176,7 @@ class IpHandler:
         data = json.dumps(_data)
         response = requests.post(url, data)
         new_serve = response.json()
-        print('this is response only: ', new_serve)
+        print('New server: ', new_serve)
         return new_serve
 
     def change_dns(self, action, lock, **kwargs):
@@ -184,7 +191,7 @@ class IpHandler:
         _data['action'] = action
         data = json.dumps(_data)
         response = requests.post(url, data)
-        print(f'changing dns status: {response}')
+        print(f'change dns response: {response}')
         lock.release()
         return response
 
