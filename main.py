@@ -24,6 +24,7 @@ class IpHandler:
     ips = []
     conf_id = []
     my_ip = ''
+    ips_not_in_dns = list()
 
     def get_ips(self):
         """gets a list of ips related to the servers"""
@@ -57,10 +58,21 @@ class IpHandler:
             print(f'{Colors.OKGREEN}***************************{ip} is up *****************************{Colors.ENDC} ')
             i += 1
             print('#: ', i)
-            time.sleep(60)
+            if ip in self.ips_not_in_dns:
+                print(f"Adding {ip} to dns was failed before. Now trying to add again.")
+                res = self.change_dns(action='add', lock=lock, new_ip=ip)
+                self.ips_not_in_dns.remove(ip)
+                print(f'ips not in dns: {self.ips_not_in_dns}')
+            time.sleep(30)
             return server
         else:
-            self.certainty_check(server, ip, count=3, delay=3)
+            ip_timing_status = ip in self.ips_not_in_dns
+            timing = {
+                'count': 1 if ip_timing_status else 3,
+                'delay': 1 if ip_timing_status else 3
+            }
+
+            self.certainty_check(server, ip, count=timing['count'], delay=timing['delay'])
             # additional_check = False
             # count = 3
             # while count > 0:
@@ -101,8 +113,13 @@ class IpHandler:
 
                 print('new ip: ', new_server)
                 print('waiting to change dns...')
-                time.sleep(45)
-            print('ip counts: ', len(self.ips), self.ips)
+                time.sleep(30)
+            else:
+                if new_server['ip'] not in self.ips_not_in_dns:
+                    self.ips_not_in_dns.append(new_server['ip'])
+                    print(f'ips not in dns: {self.ips_not_in_dns}')
+
+            return [old_server, new_server]
 
     def certainty_check(self, server, ip, count=3, delay=3):
         additional_check = False
