@@ -6,4 +6,4 @@ sandbox/
 
 logs.txt
 
-logs.log
+*.log

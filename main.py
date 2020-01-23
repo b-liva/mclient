@@ -6,7 +6,24 @@ import concurrent.futures
 import functools
 import time
 import platform
+import logging
 from config import config, fake_ips
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter('%(asctime)s:%(name)s:%(message)s')
+
+file_handler = logging.FileHandler('debug.log')
+# file_handler.setLevel(logging.ERROR)
+file_handler.setFormatter(formatter)
+
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(stream_handler)
 
 
 class Colors:
@@ -36,6 +53,7 @@ class IpHandler:
         self.ips = [item['ip'] for item in self.conf_id]
 
         print('ips: ', self.ips)
+        logger.info(f'ips fetched: {self.ips}')
 
     def get_id_by_ip(self, ip):
         for item in self.conf_id:
@@ -89,15 +107,16 @@ class IpHandler:
             try:
                 # todo (3): what if this is the only ip?
                 # todo: adding error log here.
-                print(f"Removing {old_server['ip']} from dns")
+                logger.info(f"Removing {old_server['ip']} from dns")
                 self.change_dns('remove', lock, old_ip=old_server['ip'])
                 # todo (5): Handling failure.
                 new_server = self.change_server_by_id(old_server['id'])
+                logger.info(f"New Server Created with ip: {new_server['ip']}")
             except:
-                print('something is wrong, finding newly created server')
+                logger.warning('something is wrong, finding newly created server')
                 new_server = self.find_new_drop_by_ip(ip)
                 if not new_server:
-                    print('no server created before.')
+                    logger.info('No server created before. So continue running with old server.')
                     # todo (8): Should we add dns again?
                     return server
 
@@ -106,7 +125,7 @@ class IpHandler:
             time.sleep(5)
             status = self.ping(new_server['ip'])
             if status:
-                print(f"{new_server['ip']} is checked and working. prepare to add to dns")
+                logger.info(f"{new_server['ip']} is checked and working. prepare to add to dns")
                 # else only pass the ip to check and change without changing dns
 
                 res = self.change_dns(action='add', lock=lock, new_ip=new_server['ip'])
@@ -116,8 +135,9 @@ class IpHandler:
                 time.sleep(30)
             else:
                 if new_server['ip'] not in self.ips_not_in_dns:
+                    logger.warning(f"{new_server['ip']} just created but has failed.")
                     self.ips_not_in_dns.append(new_server['ip'])
-                    print(f'ips not in dns: {self.ips_not_in_dns}')
+                    logger.info(f'ips not in dns: {self.ips_not_in_dns}')
 
             return [old_server, new_server]
 
