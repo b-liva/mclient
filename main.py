@@ -142,6 +142,7 @@ class IpHandler:
             return [old_server, new_server]
 
     def certainty_check(self, server, ip, count=3, delay=3):
+        self.check_net_connectivity()
         additional_check = False
         while count > 0:
             print(f'{Colors.WARNING}checking again for certainty: {count} remaining for ip: {ip}{Colors.ENDC}')

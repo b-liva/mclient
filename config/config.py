@@ -3,8 +3,8 @@ import os
 PRODUCTION = os.environ['ENVIRONMENT']
 print(PRODUCTION)
 if PRODUCTION == 'production_aws':
-    base_url = 'http://3.84.206.7:8000/'
-    # base_url = 'http://3.84.206.7:8004/'
+    # base_url = 'http://3.84.206.7:8000/'
+    base_url = 'http://3.84.206.7:8004/'
 else:
     base_url = 'http://localhost:8002/'
 urls = {
