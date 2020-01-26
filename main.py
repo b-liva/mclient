@@ -44,6 +44,7 @@ class IpHandler:
     ips_not_in_dns = list()
 
     def get_ips(self):
+        self.check_net_connectivity()
         """gets a list of ips related to the servers"""
         url = config.urls['get-all-servers']
         # url = "http://ff18da60.ngrok.io/mtph/get-all-servers"
@@ -56,6 +57,7 @@ class IpHandler:
         logger.info(f'ips fetched: {self.ips}')
 
     def get_id_by_ip(self, ip):
+        self.check_net_connectivity()
         for item in self.conf_id:
             if item['ip'] == ip:
                 id = item['id']
@@ -109,6 +111,8 @@ class IpHandler:
                 # todo: adding error log here.
                 logger.info(f"Removing {old_server['ip']} from dns")
                 self.change_dns('remove', lock, old_ip=old_server['ip'])
+                if ip_timing_status:
+                    self.ips_not_in_dns.remove(ip)
                 # todo (5): Handling failure.
                 new_server = self.change_server_by_id(old_server['id'])
                 logger.info(f"New Server Created with ip: {new_server['ip']}")
@@ -207,6 +211,7 @@ class IpHandler:
         return net_status
 
     def change_server_by_id(self, id):
+        self.check_net_connectivity()
         url = config.urls['change-server']
         _data = {
             'id': id,
