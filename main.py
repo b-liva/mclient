@@ -46,7 +46,7 @@ class IpHandler:
     def get_ips(self):
         self.check_net_connectivity()
         """gets a list of ips related to the servers"""
-        url = config.urls['get-all-servers']
+        url = config.URLS['get-all-servers']
         # url = "http://ff18da60.ngrok.io/mtph/get-all-servers"
         response = requests.get(url)
 
@@ -88,8 +88,8 @@ class IpHandler:
         else:
             ip_timing_status = ip in self.ips_not_in_dns
             timing = {
-                'count': 1 if ip_timing_status else 3,
-                'delay': 1 if ip_timing_status else 3
+                'count': 1 if ip_timing_status else 2,
+                'delay': 1 if ip_timing_status else 2
             }
 
             self.certainty_check(server, ip, count=timing['count'], delay=timing['delay'])
@@ -107,8 +107,8 @@ class IpHandler:
             old_server = server
             # new_server = self.change_server_with_ip(old_server)
             try:
-                # todo (3): what if this is the only ip?
-                # todo: adding error log here.
+                # TODO: (3): What if this is the only ip?
+                # TODO: Adding error log here.
                 logger.info(f"Removing {old_server['ip']} from dns")
                 self.change_dns('remove', lock, old_ip=old_server['ip'])
                 if ip_timing_status:
@@ -212,7 +212,7 @@ class IpHandler:
 
     def change_server_by_id(self, id):
         self.check_net_connectivity()
-        url = config.urls['change-server']
+        url = config.URLS['change-server']
         _data = {
             'id': id,
         }
@@ -225,7 +225,7 @@ class IpHandler:
     def change_dns(self, action, lock, **kwargs):
         self.check_net_connectivity()
         lock.acquire()
-        url = config.urls['change-dns']
+        url = config.URLS['change-dns']
         _data = dict()
         if 'old_ip' in kwargs:
             _data['old_ip'] = kwargs['old_ip']
@@ -240,7 +240,7 @@ class IpHandler:
 
     def find_new_drop_by_ip(self, ip):
         self.check_net_connectivity()
-        url = config.urls['find-new-drop']
+        url = config.URLS['find-new-drop']
         print(url)
         _data = {
             'old_ip': ip
