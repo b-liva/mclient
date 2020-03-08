@@ -23,9 +23,7 @@ class CheckIP:
     antis_list = []
 
     def get_ips(self):
-        url = config.URLS['get-api-servers']
-        response = requests.get(url)
-        self.antis_list = response.json()
+        self.antis_list = anti_ips.ipds
 
     def make_threads(self):
         """make threads for each of ips"""

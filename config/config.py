@@ -15,7 +15,8 @@ URLS = {
     'change-server': BASE_URL + 'cloud/change-server',
     'change-dns': BASE_URL + 'cloud/change-dns',
     'find-new-drop': BASE_URL + 'cloud/find-new-drop',
+    'get-api-servers': BASE_URL + 'cloud/get-api-servers',
     # 'get-all-servers': BASE_URL + "mtph/get-all-servers",
     # 'change-server': BASE_URL + 'mtph/change-server',
 }
-print(URLS)
+print(BASE_URL)
