@@ -23,7 +23,7 @@ stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(formatter)
 
 logger.addHandler(file_handler)
-logger.addHandler(stream_handler)
+# logger.addHandler(stream_handler)
 
 
 class Colors:
@@ -104,8 +104,6 @@ class IpHandler:
 
         self.conf_id = response.json()
         self.ips = [item['ip'] for item in self.conf_id]
-
-        print('ips: ', self.ips)
         logger.info(f'ips fetched: {self.ips}')
 
     def get_id_by_ip(self, ip):
@@ -172,13 +170,14 @@ class IpHandler:
 
                 res = self.change_dns(action='add', lock=lock, new_ip=new_server['ip'])
 
-                logger.info('new ip: ', new_server)
+                logger.info('new ip: ', new_server['ip'])
                 time.sleep(30)
             else:
                 if new_server['ip'] not in self.ips_not_in_dns:
-                    logger.warning(f"{new_server['ip']} just created but has failed.")
+                    logger.info(f"{new_server['ip']} just created but has failed.")
                     self.ips_not_in_dns.append(new_server['ip'])
                     logger.info(f'ips not in dns: {self.ips_not_in_dns}')
+                    print(f'ips not in dns: {self.ips_not_in_dns}')
 
             return [old_server, new_server]
 
