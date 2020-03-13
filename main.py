@@ -122,16 +122,13 @@ class IpHandler:
         """
 
         ip = server['ip']
-        i = 0
         print('Pinging: %s' % ip)
 
         status = self.ping(ip)
         if status:
             print(f'{Colors.OKGREEN}***************************{ip} is up *****************************{Colors.ENDC} ')
-            i += 1
-            print('#: ', i)
             if ip in self.ips_not_in_dns:
-                print(f"Adding {ip} to dns was failed before. Now trying to add again.")
+                print(f"{Colors.OKBLUE}Adding {ip} to dns was failed before. Now trying to add again.{Colors.ENDC}")
                 res = self.change_dns(action='add', lock=lock, new_ip=ip)
                 self.ips_not_in_dns.remove(ip)
                 print(f'ips not in dns: {self.ips_not_in_dns}')
@@ -145,17 +142,15 @@ class IpHandler:
             }
 
             self.certainty_check(server, ip, count=timing['count'], delay=timing['delay'])
-            i += 1
             old_server = server
-            # new_server = self.change_server_with_ip(old_server)
             # TODO: (3): What if this is the only ip?
             # TODO: Adding error log here.
-            logger.info(f"Removing {old_server['ip']} from dns")
             if ip_timing_status:
                 print(f'{Colors.LightRed}*************************** {ip} is down *****************************{Colors.ENDC}')
                 self.ips_not_in_dns.remove(ip)
             else:
                 print(f'{Colors.FAIL}*************************** {ip} is down *****************************{Colors.ENDC}')
+                logger.info(f"Removing {old_server['ip']} from dns")
                 self.change_dns('remove', lock, old_ip=old_server['ip'])
             # todo (5): Handling failure.
             new_server = self.change_server_by_id(old_server['id'])
@@ -171,7 +166,7 @@ class IpHandler:
             time.sleep(5)
             status = self.ping(new_server['ip'])
             if status:
-                logger.info(f"{new_server['ip']} is checked and working. prepare to add to dns")
+                logger.info(f"{Colors.OKBLUE}{new_server['ip']} is checked and working. prepare to add to dns{Colors.ENDC}")
                 # else only pass the ip to check and change without changing dns
 
                 res = self.change_dns(action='add', lock=lock, new_ip=new_server['ip'])
@@ -203,7 +198,7 @@ class IpHandler:
         import threading
         print('making %s threads' % len(self.ips))
         lock = threading.Lock()
-        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=30) as executor:
 
             for server in self.conf_id:
                 fu = executor.submit(self.check_ip, server, lock)
@@ -302,9 +297,6 @@ def main():
     """running part of the script"""
     ip_handler = IpHandler()
     ip_handler.get_ips()
-    # ip_handler.ips = [item['ip'] for item in fake_ips.ipds]
-    # ip_handler.conf_id = fake_ips.ipds
-    # print(ip_handler.ips)
 
     ip_handler.make_threads()
 
