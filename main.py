@@ -36,6 +36,58 @@ class Colors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+    ResetAll = "\033[0m"
+
+    Bold = "\033[1m"
+    Dim = "\033[2m"
+    Underlined = "\033[4m"
+    Blink = "\033[5m"
+    Reverse = "\033[7m"
+    Hidden = "\033[8m"
+
+    ResetBold = "\033[21m"
+    ResetDim = "\033[22m"
+    ResetUnderlined = "\033[24m"
+    ResetBlink = "\033[25m"
+    ResetReverse = "\033[27m"
+    ResetHidden = "\033[28m"
+
+    Default = "\033[39m"
+    Black = "\033[30m"
+    Red = "\033[31m"
+    Green = "\033[32m"
+    Yellow = "\033[33m"
+    Blue = "\033[34m"
+    Magenta = "\033[35m"
+    Cyan = "\033[36m"
+    LightGray = "\033[37m"
+    DarkGray = "\033[90m"
+    LightRed = "\033[91m"
+    LightGreen = "\033[92m"
+    LightYellow = "\033[93m"
+    LightBlue = "\033[94m"
+    LightMagenta = "\033[95m"
+    LightCyan = "\033[96m"
+    White = "\033[97m"
+
+    BackgroundDefault = "\033[49m"
+    BackgroundBlack = "\033[40m"
+    BackgroundRed = "\033[41m"
+    BackgroundGreen = "\033[42m"
+    BackgroundYellow = "\033[43m"
+    BackgroundBlue = "\033[44m"
+    BackgroundMagenta = "\033[45m"
+    BackgroundCyan = "\033[46m"
+    BackgroundLightGray = "\033[47m"
+    BackgroundDarkGray = "\033[100m"
+    BackgroundLightRed = "\033[101m"
+    BackgroundLightGreen = "\033[102m"
+    BackgroundLightYellow = "\033[103m"
+    BackgroundLightBlue = "\033[104m"
+    BackgroundLightMagenta = "\033[105m"
+    BackgroundLightCyan = "\033[106m"
+    BackgroundWhite = "\033[107m"
+
 
 class IpHandler:
     ips = []
@@ -93,36 +145,26 @@ class IpHandler:
             }
 
             self.certainty_check(server, ip, count=timing['count'], delay=timing['delay'])
-            # additional_check = False
-            # count = 3
-            # while count > 0:
-            #     print(f'{Colors.WARNING}checking again for certainty: {count} remaining for ip: {ip}{Colors.ENDC}')
-            #     additional_check = self.ping(ip)
-            #     count -= 1
-            #     time.sleep(3)
-            #     if additional_check:
-            #         return server
-            print(f'{Colors.FAIL}*************************** {ip} is down *****************************{Colors.ENDC}')
             i += 1
             old_server = server
             # new_server = self.change_server_with_ip(old_server)
-            try:
-                # TODO: (3): What if this is the only ip?
-                # TODO: Adding error log here.
-                logger.info(f"Removing {old_server['ip']} from dns")
+            # TODO: (3): What if this is the only ip?
+            # TODO: Adding error log here.
+            logger.info(f"Removing {old_server['ip']} from dns")
+            if ip_timing_status:
+                print(f'{Colors.LightRed}*************************** {ip} is down *****************************{Colors.ENDC}')
+                self.ips_not_in_dns.remove(ip)
+            else:
+                print(f'{Colors.FAIL}*************************** {ip} is down *****************************{Colors.ENDC}')
                 self.change_dns('remove', lock, old_ip=old_server['ip'])
-                if ip_timing_status:
-                    self.ips_not_in_dns.remove(ip)
-                # todo (5): Handling failure.
-                new_server = self.change_server_by_id(old_server['id'])
-                logger.info(f"New Server Created with ip: {new_server['ip']}")
-            except:
-                logger.warning('something is wrong, finding newly created server')
-                new_server = self.find_new_drop_by_ip(ip)
-                if not new_server:
-                    logger.info('No server created before. So continue running with old server.')
-                    # todo (8): Should we add dns again?
-                    return server
+            # todo (5): Handling failure.
+            new_server = self.change_server_by_id(old_server['id'])
+            logger.info(f"New Server Created with ip: {new_server['ip']}")
+            # new_server = self.find_new_drop_by_ip(ip)
+            if not new_server:
+                logger.info('No server created before. So continue running with old server.')
+                # todo (8): Should we add dns again?
+                return server
 
             # todo (6): what if first checks fails and other passes.
             self.ping(new_server['ip'])
