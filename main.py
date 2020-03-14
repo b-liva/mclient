@@ -125,7 +125,7 @@ class IpHandler:
 
         ip = server['ip']
 
-        status = self.ping(ip)
+        status = self.fping(ip)
         if status:
             if ip not in self.up_list:
                 self.up_list.append(ip)
@@ -183,9 +183,9 @@ class IpHandler:
                 return server
 
             # todo (6): what if first checks fails and other passes.
-            self.ping(new_server['ip'])
+            self.fping(new_server['ip'])
             time.sleep(5)
-            status = self.ping(new_server['ip'])
+            status = self.fping(new_server['ip'])
             if status:
                 logger.info(f"{Colors.OKBLUE}{new_server['ip']} is checked and working. prepare to add to dns{Colors.ENDC}")
                 # else only pass the ip to check and change without changing dns
@@ -206,7 +206,7 @@ class IpHandler:
         additional_check = False
         while count > 0:
             print(f'{Colors.WARNING}checking again for certainty: {count} remaining for ip: {ip}{Colors.ENDC}')
-            additional_check = self.ping(ip)
+            additional_check = self.fping(ip)
             count -= 1
             time.sleep(delay)
             # if additional_check:
@@ -259,6 +259,27 @@ class IpHandler:
         if str(output).count('Request timed out') > 1:
             return False
         return True
+
+    def fping(self, ip, packet_count=15, check_net=True):
+        if check_net:
+            self.check_net_connectivity()
+        cmd = ['fping', '-c', str(packet_count)]
+        cmd.append(str(ip))
+        ping = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output = ping.communicate()
+        out = str(output[-1])
+        if '%,' in out:
+            res = out.split('%,')[0]
+            res = res.split("/")[-1]
+        else:
+            res = out.split('=')
+            res = res[-1].split('%')[0]
+            res = res.split("/")[-1]
+        status = True
+        if int(res) >= 50:
+            status = False
+            return status
+        return status
 
     def check_net_connectivity(self):
         net_status = self.ping('www.google.com', check_net=False)
