@@ -94,6 +94,10 @@ class IpHandler:
     conf_id = []
     my_ip = ''
     ips_not_in_dns = list()
+    number_of_threads = 0
+    up_list = []
+    checking_list = []
+    down_list = []
 
     def get_ips(self):
         self.check_net_connectivity()
@@ -120,27 +124,40 @@ class IpHandler:
         """
 
         ip = server['ip']
-        print('Pinging: %s' % ip)
 
         status = self.ping(ip)
         if status:
-            print(f'{Colors.OKGREEN}***************************{ip} is up *****************************{Colors.ENDC} ')
+            if ip not in self.up_list:
+                self.up_list.append(ip)
+            up_count = len(self.up_list)
+            not_count = len(self.ips_not_in_dns)
+            failure_stage_count = len(self.checking_list)
+            total = up_count + not_count + failure_stage_count
+            print(f'{Colors.OKGREEN}U:{up_count}, Fs:{failure_stage_count} N:{not_count}, T:{total} '
+                  f'*************************{ip} is up ***************************** {Colors.ENDC}')
             if ip in self.ips_not_in_dns:
                 print(f"{Colors.OKBLUE}Adding {ip} to dns was failed before. Now trying to add again.{Colors.ENDC}")
                 res = self.change_dns(action='add', lock=lock, new_ip=ip)
+                if ip not in self.up_list:
+                    self.up_list.append(ip)
                 self.ips_not_in_dns.remove(ip)
                 logger.info(f'ips not in dns: {self.ips_not_in_dns}')
-                print(f'ips not in dns: {self.ips_not_in_dns}')
+                print(f'# of ips not in dns: {len(self.ips_not_in_dns)}')
             time.sleep(30)
             return server
         else:
             ip_timing_status = ip in self.ips_not_in_dns
+            if ip not in self.checking_list and not ip_timing_status:
+                self.checking_list.append(ip)
             timing = {
                 'count': 1 if ip_timing_status else 2,
                 'delay': 1 if ip_timing_status else 2
             }
 
-            self.certainty_check(server, ip, count=timing['count'], delay=timing['delay'])
+            ip_is_up = self.certainty_check(server, ip, count=timing['count'], delay=timing['delay'])
+            if ip_is_up:
+                self.checking_list.remove(ip)
+                return server
             old_server = server
             # TODO: (3): What if this is the only ip?
             # TODO: Adding error log here.
@@ -148,12 +165,17 @@ class IpHandler:
                 print(f'{Colors.LightRed}*************************** {ip} is down *****************************{Colors.ENDC}')
                 self.ips_not_in_dns.remove(ip)
             else:
+                if ip in self.up_list:
+                    self.up_list.remove(ip)
+
                 print(f'{Colors.FAIL}*************************** {ip} is down *****************************{Colors.ENDC}')
                 logger.info(f"Removing {old_server['ip']} from dns")
                 self.change_dns('remove', lock, old_ip=old_server['ip'])
             # todo (5): Handling failure.
             new_server = self.change_server_by_id(old_server['id'])
             logger.info(f"New Server Created with ip: {new_server['ip']}")
+            if ip in self.checking_list:
+                self.checking_list.remove(ip)
             # new_server = self.find_new_drop_by_ip(ip)
             if not new_server:
                 logger.info('No server created before. So continue running with old server.')
@@ -169,15 +191,13 @@ class IpHandler:
                 # else only pass the ip to check and change without changing dns
 
                 res = self.change_dns(action='add', lock=lock, new_ip=new_server['ip'])
-
-                logger.info('new ip: ', new_server['ip'])
                 time.sleep(30)
             else:
                 if new_server['ip'] not in self.ips_not_in_dns:
                     logger.info(f"{new_server['ip']} just created but has failed.")
                     self.ips_not_in_dns.append(new_server['ip'])
                     logger.info(f'ips not in dns: {self.ips_not_in_dns}')
-                    print(f'ips not in dns: {self.ips_not_in_dns}')
+                    print(f'# of ips not in dns: {len(self.ips_not_in_dns)}')
 
             return [old_server, new_server]
 
@@ -189,13 +209,15 @@ class IpHandler:
             additional_check = self.ping(ip)
             count -= 1
             time.sleep(delay)
-            if additional_check:
-                return server
+            # if additional_check:
+            #     return server
+        return additional_check
 
     def make_threads(self):
         """make threads for each of ips"""
         import threading
-        print('making %s threads' % len(self.ips))
+        self.number_of_threads = len(self.ips)
+        print('making %s threads' % self.number_of_threads)
         lock = threading.Lock()
         with concurrent.futures.ThreadPoolExecutor(max_workers=30) as executor:
 
